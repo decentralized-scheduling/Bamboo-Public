@@ -2,7 +2,7 @@
 #include "global.h"
 #include "helper.h"
 
-void 
+void
 Catalog::init(const char * table_name, int field_cnt) {
 	this->table_name = table_name;
 	this->field_cnt = 0;
@@ -50,7 +50,7 @@ uint64_t Catalog::get_field_index(char * name) {
 void Catalog::print_schema() {
 	printf("\n[Catalog] %s\n", table_name);
 	for (UInt32 i = 0; i < field_cnt; i++) {
-		printf("\t%s\t%s\t%ld\n", get_field_name(i), 
+		printf("\t%s\t%s\t%ld\n", get_field_name(i),
 			get_field_type(i), get_field_size(i));
 	}
 }

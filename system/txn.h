@@ -2,6 +2,10 @@
 
 #include "global.h"
 
+#if CC_ALG == BASIC_SCHED
+#include "basic_sched.h"
+#endif
+
 class workload;
 class thread_t;
 class row_t;
@@ -15,7 +19,7 @@ struct LockEntry;
 struct BBLockEntry;
 #endif
 
-// each thread has a txn_man. 
+// each thread has a txn_man.
 // a txn_man corresponds to a single transaction.
 
 //For VLL
@@ -24,8 +28,8 @@ enum TxnType {VLL_Blocked, VLL_Free};
 class Access {
   public:
     access_t 	type;
-    row_t * 	orig_row;
-    row_t * 	data;
+    row_t * 	orig_row;  // ptr to real row
+    row_t * 	data;      // local buf to work on
     row_t * 	orig_data;
 #if CC_ALG == BAMBOO
     BBLockEntry * lock_entry;
@@ -46,6 +50,8 @@ class Access {
     uint64_t  rd_accesses;
     uint64_t  wr_accesses;
     uint64_t  lk_accesses;
+#elif CC_ALG == QCC
+    row_t     *buf;
 #endif
 #if COMMUTATIVE_OPS
     // support increment-only for now
@@ -110,8 +116,8 @@ class txn_man
     ts_t volatile       timestamp;
     uint8_t             padding1[64 - sizeof(ts_t)];
     // share its own cache line since it happens tooooo frequent.
-    // bamboo -- combine both status and barrier into one int. 
-    // low 2 bits representing status 
+    // bamboo -- combine both status and barrier into one int.
+    // low 2 bits representing status
     uint64_t volatile   commit_barriers;
     uint8_t             padding2[64 - sizeof(uint64_t)];
     //uint64_t volatile   tmp_barriers;
@@ -156,6 +162,20 @@ class txn_man
     // [HEKATON]
 #elif CC_ALG == HEKATON
     volatile void * volatile     history_entry;
+#elif CC_ALG == ORDERED_LOCK
+    struct {
+        itemid_t *row_item; // (row_t *)row_item->location->manager is Row_ol
+        access_t type;
+    } rows[MAX_ROW_PER_TXN];
+    u64 nr_rows;
+#elif CC_ALG == BASIC_SCHED
+    struct basic_sched_request request;
+#elif CC_ALG == QCC
+    struct qcc_rvec rows[MAX_ROW_PER_TXN];
+    u64 nr_rows;
+    struct qcc_qvec queues[MAX_ROW_PER_TXN];
+    u32 nr_queues;
+    itemid_t *row_buffer[MAX_ROW_PER_TXN];
 #endif
 
     // **************************************
@@ -193,9 +213,9 @@ class txn_man
     // [WW, BAMBOO]
     // if already abort, no change, return aborted
     // if already commit, no change, return committed
-    // if running, set abort, return aborted.  
+    // if running, set abort, return aborted.
     status_t            set_abort(bool cascading=false) {
-#if CC_ALG == BAMBOO 
+#if CC_ALG == BAMBOO
         uint64_t local = commit_barriers;
         uint64_t barriers = local >> 2;
         uint64_t s = local & 3UL;
@@ -207,7 +227,7 @@ class txn_man
             local = commit_barriers;
             barriers = local >> 2;
             s = local & 3UL;
-        } 
+        }
         if (s == ABORTED) {
             if (!lock_abort)
                 lock_abort = true;
@@ -266,6 +286,12 @@ class txn_man
     // [SILO]
 #elif CC_ALG == SILO
     RC				    validate_silo();
+#elif CC_ALG == QCC
+    RC                  qcc_commit();
+#elif CC_ALG == ORDERED_LOCK
+    void                ol_sort_rows();
+#elif CC_ALG == BASIC_SCHED
+    void                bs_regulate_request();
 #endif
 
   protected:

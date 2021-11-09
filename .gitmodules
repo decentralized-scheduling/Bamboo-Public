@@ -1,0 +1,3 @@
+[submodule "qcc"]
+	path = qcc
+	url = https://github.com/decentralized-scheduling/DecentSched.git

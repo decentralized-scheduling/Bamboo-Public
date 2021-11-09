@@ -12,7 +12,7 @@
 // The denpendency information per thread
 struct DepThd {
     std::list<uint64_t> adj;    // Pointer to an array containing adjacency lists
-	pthread_mutex_t lock; 
+	pthread_mutex_t lock;
 	volatile int64_t txnid; 				// -1 means invalid
 	int num_locks;				// the # of locks that txn is currently holding
 	char pad[2 * CL_SIZE - sizeof(int64_t) - sizeof(pthread_mutex_t) - sizeof(std::list<uint64_t>) - sizeof(int)];
@@ -32,7 +32,7 @@ struct DetectData {
 class DL_detect {
 public:
 	void init();
-	// return values: 
+	// return values:
 	// 	0: no deadlocks
 	//  1: deadlock exists
 	int detect_cycle(uint64_t txnid);
@@ -47,7 +47,7 @@ public:
 private:
 	int V;    // No. of vertices
 	DepThd * dependency;
-	
+
 	///////////////////////////////////////////
 	// For deadlock detection
 	///////////////////////////////////////////

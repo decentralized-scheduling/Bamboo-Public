@@ -15,7 +15,7 @@ RC workload::init() {
 
 RC workload::init_schema(string schema_file) {
     assert(sizeof(uint64_t) == 8);
-    assert(sizeof(double) == 8);	
+    assert(sizeof(double) == 8);
 	string line;
 	ifstream fin(schema_file);
     Catalog * schema;
@@ -78,7 +78,7 @@ RC workload::init_schema(string schema_file) {
 				items.push_back(token);
 		    	line.erase(0, pos + 1);
 			}
-			
+
 			string tname(items[0]);
 			INDEX * index = (INDEX *) _mm_malloc(sizeof(INDEX), 64);
 			new(index) INDEX();

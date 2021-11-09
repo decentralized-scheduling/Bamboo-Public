@@ -37,7 +37,7 @@ public:
 private:
     void init_thread_arena();
 	int get_size_id(UInt32 size);
-	
+
 	// each thread has several arenas for different block size
 	Arena ** _arenas;
 	int _bucket_cnt;

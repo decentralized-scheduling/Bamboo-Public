@@ -74,7 +74,7 @@ RC Row_ww::lock_get(lock_t type, txn_man * txn, uint64_t* &txnids, int&txncnt,
   RC rc;
   LockEntry * entry = get_entry(access);
   LockEntry * en;
-#if PF_ABORT 
+#if PF_ABORT
   txn->abort_chain = 0;
 #endif
 #if PF_CS
@@ -176,7 +176,7 @@ RC Row_ww::lock_get(lock_t type, txn_man * txn, uint64_t* &txnids, int&txncnt,
   if (rc == RCOK)
       INC_STATS(txn->get_thd_id(), lock_directly_cnt, 1);
 #endif
-#if PF_ABORT 
+#if PF_ABORT
   if (txn->abort_chain > 0) {
     UPDATE_STATS(txn->get_thd_id(), max_abort_length, txn->abort_chain);
     INC_STATS(txn->get_thd_id(), cascading_abort_times, 1);
@@ -232,7 +232,7 @@ RC Row_ww::lock_release(LockEntry * entry) {
 #endif
   unlock(entry->txn);
   COMPILER_BARRIER
-#if PF_ABORT 
+#if PF_ABORT
   if (entry->txn->abort_chain > 0)
     UPDATE_STATS(entry->txn->get_thd_id(), abort_length, entry->txn->abort_chain);
 #endif
@@ -248,7 +248,7 @@ bool Row_ww::conflict_lock(lock_t l1, lock_t l2) {
     return false;
 }
 
-inline 
+inline
 LockEntry * Row_ww::get_entry(Access * access) {
   //LockEntry * entry = (LockEntry *) mem_allocator.alloc(sizeof(LockEntry),
   // _row->get_part_id());
@@ -263,7 +263,7 @@ LockEntry * Row_ww::get_entry(Access * access) {
   #endif
 }
 
-inline 
+inline
 void Row_ww::return_entry(LockEntry * entry) {
   entry->status = LOCK_DROPPED;
   entry->next = NULL;

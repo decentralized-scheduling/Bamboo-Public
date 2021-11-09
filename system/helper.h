@@ -1,10 +1,10 @@
-#pragma once 
+#pragma once
 
 #include <cstdlib>
 #include <iostream>
 #include <stdint.h>
 #include "global.h"
-
+#include "qcc.h"
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -149,7 +149,7 @@
 /************************************************/
 // malloc helper
 /************************************************/
-// In order to avoid false sharing, any unshared read/write array residing on the same 
+// In order to avoid false sharing, any unshared read/write array residing on the same
 // cache line should be modified to be read only array with pointers to thread local data block.
 // TODO. in order to have per-thread malloc, this needs to be modified !!!
 
@@ -191,7 +191,7 @@
 enum Data_type {DT_table, DT_page, DT_row };
 
 // TODO currently, only DR_row supported
-// data item type. 
+// data item type.
 class itemid_t {
 public:
 	itemid_t() { };
@@ -221,38 +221,41 @@ uint64_t merge_idx_key(uint64_t key1, uint64_t key2, uint64_t key3);
 
 extern timespec * res;
 inline uint64_t get_server_clock() {
-#if defined(__i386__)
-    uint64_t ret;
-    __asm__ __volatile__("rdtsc" : "=A" (ret));
-#elif defined(__x86_64__)
-    unsigned hi, lo;
-    __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
-    uint64_t ret = ( (uint64_t)lo)|( ((uint64_t)hi)<<32 );
-	ret = (uint64_t) ((double)ret / CPU_FREQ);
-#else 
-	timespec * tp = new timespec;
-    clock_gettime(CLOCK_REALTIME, tp);
-    uint64_t ret = tp->tv_sec * 1000000000 + tp->tv_nsec;
-#endif
-    return ret;
+    // no rdtsc..
+    return time_nsec();
+// #if defined(__i386__)
+//     uint64_t ret;
+//     __asm__ __volatile__("rdtsc" : "=A" (ret));
+// #elif defined(__x86_64__)
+//     unsigned hi, lo;
+//     __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+//     uint64_t ret = ( (uint64_t)lo)|( ((uint64_t)hi)<<32 );
+// 	ret = (uint64_t) ((double)ret / CPU_FREQ);
+// #else
+// 	timespec * tp = new timespec;
+//     clock_gettime(CLOCK_REALTIME, tp);
+//     uint64_t ret = tp->tv_sec * 1000000000 + tp->tv_nsec;
+// #endif
+//     return ret;
 }
 
 inline uint64_t get_sys_clock() {
-#ifndef NOGRAPHITE
-	static volatile uint64_t fake_clock = 0;
-	if (warmup_finish)
-		return CarbonGetTime();   // in ns
-	else {
-		return ATOM_ADD_FETCH(fake_clock, 100);
-	}
-#else
+//#ifndef NOGRAPHITE
+//	static volatile uint64_t fake_clock = 0;
+//	if (warmup_finish)
+//		return CarbonGetTime();   // in ns
+//	else {
+//		return ATOM_ADD_FETCH(fake_clock, 100);
+//	}
+//#else
   #if TIME_ENABLE
 	return get_server_clock();
   #else
 	return 0;
   #endif
-#endif
+//#endif
 }
+
 class myrand {
 public:
 	void init(uint64_t seed);
@@ -262,15 +265,20 @@ private:
 };
 
 inline void set_affinity(uint64_t thd_id) {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(thd_id, &mask);
+    sched_setaffinity(0, sizeof(cpu_set_t), &mask);
+
 	return;
 	/*
 	// TOOD. the following mapping only works for swarm
-	// which has 4-socket, 10 physical core per socket, 
+	// which has 4-socket, 10 physical core per socket,
 	// 80 threads in total with hyper-threading
 	uint64_t a = thd_id % 40;
 	uint64_t processor_id = a / 10 + (a % 10) * 4;
 	processor_id += (thd_id / 40) * 40;
-	
+
 	cpu_set_t  mask;
 	CPU_ZERO(&mask);
 	CPU_SET(processor_id, &mask);

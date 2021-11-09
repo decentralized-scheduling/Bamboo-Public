@@ -20,7 +20,7 @@ public:
 	void vllMainLoop(txn_man * next_txn, base_query * query);
 	// 	 1: txn is blocked
 	//	 2: txn is not blocked. Can run.
-	//   3: txn_queue is full. 
+	//   3: txn_queue is full.
 	int beginTxn(txn_man * txn, base_query * query, TxnQEntry *& entry);
 	void finishTxn(txn_man * txn, TxnQEntry * entry);
 	void execute(txn_man * txn, base_query * query);

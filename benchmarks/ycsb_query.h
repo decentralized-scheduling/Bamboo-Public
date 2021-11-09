@@ -7,12 +7,12 @@
 
 class workload;
 class Query_thd;
-// Each ycsb_query contains several ycsb_requests, 
+// Each ycsb_query contains several ycsb_requests,
 // each of which is a RD, WR to a single table
 
 class ycsb_request {
 public:
-	access_t rtype; 
+	access_t rtype;
 	uint64_t key;
 	char value;
 	// only for (qtype == SCAN)
@@ -37,7 +37,7 @@ private:
 	// for Zipfian distribution
 	static double zeta(uint64_t n, double theta);
 	uint64_t zipf(uint64_t n, double theta);
-	
+
 	static uint64_t the_n;
 	static double denom;
 	double zeta_2_theta;

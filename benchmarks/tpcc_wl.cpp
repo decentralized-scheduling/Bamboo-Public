@@ -65,16 +65,16 @@ RC tpcc_wl::init_table() {
 // 	- dist
 //  	- cust
 //	  	- hist
-//		- order 
+//		- order
 //		- new order
 //		- order line
 /**********************************/
 	tpcc_buffer = new drand48_data * [g_num_wh];
 	pthread_t * p_thds = new pthread_t[g_num_wh - 1];
-	for (uint32_t i = 0; i < g_num_wh - 1; i++) 
+	for (uint32_t i = 0; i < g_num_wh - 1; i++)
 		pthread_create(&p_thds[i], NULL, threadInitWarehouse, this);
 	threadInitWarehouse(this);
-	for (uint32_t i = 0; i < g_num_wh - 1; i++) 
+	for (uint32_t i = 0; i < g_num_wh - 1; i++)
 		pthread_join(p_thds[i], NULL);
 	printf("TPCC Data Initialization Complete!\n");
 	return RCOK;
@@ -103,10 +103,10 @@ void tpcc_wl::init_tab_item() {
 		char data[50];
     	MakeAlphaString(26, 50, data, 0);
 		// TODO in TPCC, "original" should start at a random position
-		if (RAND(10, 0) == 0) 
-			strcpy(data, "original");		
+		if (RAND(10, 0) == 0)
+			strcpy(data, "original");
 		row->set_value(I_DATA, data);
-		
+
 		index_insert(i_item, i, row, 0);
 	}
 }
@@ -139,7 +139,7 @@ void tpcc_wl::init_tab_wh(uint32_t wid) {
    	double w_ytd=300000.00;
 	row->set_value(W_TAX, tax);
 	row->set_value(W_YTD, w_ytd);
-	
+
 	index_insert(i_warehouse, wid, row, wh_to_part(wid));
 	return;
 }
@@ -150,7 +150,7 @@ void tpcc_wl::init_tab_dist(uint64_t wid) {
 		uint64_t row_id;
 		t_district->get_new_row(row, 0, row_id);
 		row->set_primary_key(did);
-		
+
 		row->set_value(D_ID, did);
 		row->set_value(D_W_ID, wid);
 		char name[10];
@@ -174,13 +174,13 @@ void tpcc_wl::init_tab_dist(uint64_t wid) {
 		row->set_value(D_TAX, tax);
 		row->set_value(D_YTD, w_ytd);
 		row->set_value(D_NEXT_O_ID, 3001);
-		
+
 		index_insert(i_district, distKey(did, wid), row, wh_to_part(wid));
 	}
 }
 
 void tpcc_wl::init_tab_stock(uint64_t wid) {
-	
+
 	for (UInt32 sid = 1; sid <= g_max_items; sid++) {
 		row_t * row;
 		uint64_t row_id;
@@ -227,7 +227,7 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
 		t_customer->get_new_row(row, 0, row_id);
 		row->set_primary_key(cid);
 
-		row->set_value(C_ID, cid);		
+		row->set_value(C_ID, cid);
 		row->set_value(C_D_ID, did);
 		row->set_value(C_W_ID, wid);
 		char c_last[LASTNAME_LEN];
@@ -248,7 +248,7 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
         MakeAlphaString(10, 20, street, wid-1);
 		row->set_value(C_STREET_2, street);
         MakeAlphaString(10, 20, street, wid-1);
-		row->set_value(C_CITY, street); 
+		row->set_value(C_CITY, street);
 		char state[2];
 		MakeAlphaString(2, 2, state, wid-1); /* State */
 		row->set_value(C_STATE, state);
@@ -305,7 +305,7 @@ void tpcc_wl::init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id) {
 }
 
 void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
-	uint64_t perm[g_cust_per_dist]; 
+	uint64_t perm[g_cust_per_dist];
 	init_permutation(perm, wid); /* initialize permutation of customer numbers */
 	for (UInt32 oid = 1; oid <= g_cust_per_dist; oid++) {
 		row_t * row;
@@ -322,13 +322,13 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
 		row->set_value(O_ENTRY_D, o_entry);
 		if (oid < 2101)
 			row->set_value(O_CARRIER_ID, URand(1, 10, wid-1));
-		else 
+		else
 			row->set_value(O_CARRIER_ID, 0);
 		o_ol_cnt = URand(5, 15, wid-1);
 		row->set_value(O_OL_CNT, o_ol_cnt);
 		row->set_value(O_ALL_LOCAL, 1);
-		
-		// ORDER-LINE	
+
+		// ORDER-LINE
 #if !TPCC_SMALL
 		for (uint32_t ol = 1; ol <= o_ol_cnt; ol++) {
 			t_orderline->get_new_row(row, 0, row_id);
@@ -366,11 +366,11 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
 | InitPermutation
 +==================================================================*/
 
-void 
+void
 tpcc_wl::init_permutation(uint64_t * perm_c_id, uint64_t wid) {
 	uint32_t i;
 	// Init with consecutive values
-	for(i = 0; i < g_cust_per_dist; i++) 
+	for(i = 0; i < g_cust_per_dist; i++)
 		perm_c_id[i] = i+1;
 
 	// shuffle
@@ -395,7 +395,7 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	tpcc_buffer[tid] = (drand48_data *) _mm_malloc(sizeof(drand48_data), 64);
 	assert((uint64_t)tid < g_num_wh);
 	srand48_r(wid, tpcc_buffer[tid]);
-	
+
 	if (tid == 0)
 		wl->init_tab_item();
 	wl->init_tab_wh( wid );
@@ -404,7 +404,7 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	for (uint64_t did = 1; did <= DIST_PER_WARE; did++) {
 		wl->init_tab_cust(did, wid);
 		wl->init_tab_order(did, wid);
-		for (uint64_t cid = 1; cid <= g_cust_per_dist; cid++) 
+		for (uint64_t cid = 1; cid <= g_cust_per_dist; cid++)
 			wl->init_tab_hist(cid, did, wid);
 	}
 	return NULL;
@@ -422,7 +422,7 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
     sc_graph[i][j][k].txn_type = TPCC_ ## tpe; \
     sc_graph[i][j][k].piece_id = pid; \
     cnt++; \
-  } 
+  }
 
 #define ADD_ONLY_EDGE(tpe, ptpe, pid) \
   if (k == TPCC_ ## tpe && (g_perc_ ## ptpe > 0)) { \
@@ -433,7 +433,7 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 
 #define ADD_OTHER_EDGE() \
   else \
-    sc_graph[i][j][k].txn_type = TPCC_ALL; 
+    sc_graph[i][j][k].txn_type = TPCC_ALL;
 
 #if CC_ALG == IC3
 void
@@ -524,7 +524,7 @@ tpcc_wl::init_scgraph() {
           for (k = 0; k < TPCC_ALL; k++) {
             ADD_ONLY_EDGE(PAYMENT, payment, 0)
             ADD_OTHER_EDGE()
-          } 
+          }
 #endif
         } else if (j == 1) { // district
           for (k = 0; k < TPCC_ALL; k++) {
@@ -589,7 +589,7 @@ tpcc_wl::init_scgraph() {
   }
 }
 
-SC_PIECE * 
+SC_PIECE *
 tpcc_wl::get_cedges(TPCCTxnType txn_type, int piece_id) {
     if (sc_graph == NULL)
       return NULL;

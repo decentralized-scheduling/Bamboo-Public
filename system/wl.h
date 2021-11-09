@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "global.h"
 
@@ -27,7 +27,14 @@ public:
 	map<string, table_t *> tables;
 	map<string, INDEX *> indexes;
 
-	
+#if CC_ALG == QCC
+        struct qcc *q;
+#endif
+
+#if CC_ALG == BASIC_SCHED
+        struct basic_sched *s;
+#endif
+
 	// initialize the tables and indexes.
 	virtual RC init();
 	virtual RC init_schema(string schema_file);
@@ -35,7 +42,7 @@ public:
 	virtual RC get_txn_man(txn_man *& txn_manager, thread_t * h_thd)=0;
 
 	// ic3 helpers
-	virtual SC_PIECE * get_cedges(TPCCTxnType txn_type, int piece_id); 
+	virtual SC_PIECE * get_cedges(TPCCTxnType txn_type, int piece_id);
 
 	bool sim_done;
 protected:

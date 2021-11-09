@@ -5,13 +5,13 @@ class Catalog;
 class txn_man;
 
 // Only a constant number of versions can be maintained.
-// If a request accesses an old version that has been recycled,   
+// If a request accesses an old version that has been recycled,
 // simply abort the request.
 
 #if CC_ALG == MVCC
 struct WriteHisEntry {
 	bool valid;		// whether the entry contains a valid version
-	bool reserved; 	// when valid == false, whether the entry is reserved by a P_REQ 
+	bool reserved; 	// when valid == false, whether the entry is reserved by a P_REQ
 	ts_t ts;
 	row_t * row;
 };
@@ -39,14 +39,14 @@ private:
 	void update_buffer(txn_man * txn, TsType type);
 	void buffer_req(TsType type, txn_man * txn, bool served);
 
-	// Invariant: all valid entries in _requests have greater ts than any entry in _write_history 
+	// Invariant: all valid entries in _requests have greater ts than any entry in _write_history
 	row_t * 		_latest_row;
 	ts_t			_latest_wts;
 	ts_t			_oldest_wts;
 	WriteHisEntry * _write_history;
 	// the following is a small optimization.
-	// the timestamp for the served prewrite request. There should be at most one 
-	// served prewrite request. 
+	// the timestamp for the served prewrite request. There should be at most one
+	// served prewrite request.
 	bool  			_exists_prewrite;
 	ts_t 			_prewrite_ts;
 	uint32_t 		_prewrite_his_id;
@@ -59,7 +59,7 @@ private:
 	// Invariant: _num_versions <= 4
 	// Invariant: _num_prewrite_reservation <= 2
 	uint32_t 		_num_versions;
-	
+
 	// list = 0: _write_history
 	// list = 1: _requests
 	void double_list(uint32_t list);

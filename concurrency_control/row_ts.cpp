@@ -17,7 +17,7 @@ void Row_ts::init(row_t * row) {
     writereq = NULL;
     prereq = NULL;
 	preq_len = 0;
-	latch = (pthread_mutex_t *) 
+	latch = (pthread_mutex_t *)
 		mem_allocator.alloc(sizeof(pthread_mutex_t), part_id);
 	pthread_mutex_init( latch, NULL );
 	blatch = false;
@@ -36,7 +36,7 @@ void Row_ts::return_req_entry(TsReqEntry * entry) {
 	mem_allocator.free(entry, sizeof(TsReqEntry));
 }
 
-void Row_ts::return_req_list(TsReqEntry * list) {	
+void Row_ts::return_req_list(TsReqEntry * list) {
 	TsReqEntry * req = list;
 	TsReqEntry * prev = NULL;
 	while (req != NULL) {
@@ -76,7 +76,7 @@ void Row_ts::buffer_req(TsType type, txn_man * txn, row_t * row)
 TsReqEntry * Row_ts::debuffer_req(TsType type, txn_man * txn) {
 	return debuffer_req(type, txn, UINT64_MAX);
 }
-	
+
 TsReqEntry * Row_ts::debuffer_req(TsType type, ts_t ts) {
 	return debuffer_req(type, NULL, ts);
 }
@@ -94,7 +94,7 @@ TsReqEntry * Row_ts::debuffer_req( TsType type, txn_man * txn, ts_t ts ) {
 	TsReqEntry * req = *queue;
 	TsReqEntry * prev_req = NULL;
 	if (txn != NULL) {
-		while (req != NULL && req->txn != txn) {		
+		while (req != NULL && req->txn != txn) {
 			prev_req = req;
 			req = req->next;
 		}
@@ -177,7 +177,7 @@ RC Row_ts::access(txn_man * txn, TsType type, row_t * row) {
 #if TS_TWR
 			buffer_req(P_REQ, txn, NULL);
 			rc = RCOK;
-#else 
+#else
 			if (ts < wts) {
 				rc = Abort;
 			} else {
@@ -190,7 +190,7 @@ RC Row_ts::access(txn_man * txn, TsType type, row_t * row) {
 		// write requests are always accepted.
 		rc = RCOK;
 #if TS_TWR
-		// according to TWR, this write is already stale, ignore. 
+		// according to TWR, this write is already stale, ignore.
 		if (ts < wts) {
 			TsReqEntry * req = debuffer_req(P_REQ, txn);
 			assert(req != NULL);
@@ -209,8 +209,8 @@ RC Row_ts::access(txn_man * txn, TsType type, row_t * row) {
 		if (ts > min_rts) {
 			buffer_req(W_REQ, txn, row);
             goto final;
-		} else { 
-			// the write is output. 
+		} else {
+			// the write is output.
 			_row->copy(row);
 			if (wts < ts)
 				wts = ts;
@@ -228,9 +228,9 @@ RC Row_ts::access(txn_man * txn, TsType type, row_t * row) {
 		assert (req != NULL);
 		update_buffer();
 		return_req_entry(req);
-	} else 
+	} else
 		assert(false);
-	
+
 final:
 	if (g_central_man)
 		glob_manager->release_row(_row);
@@ -251,7 +251,7 @@ void Row_ts::update_buffer() {
 		if (ready_read == NULL) break;
 		// for each debuffered readreq, perform read.
 		TsReqEntry * req = ready_read;
-		while (req != NULL) {			
+		while (req != NULL) {
 			req->txn->cur_row->copy(_row);
 			if (rts < req->ts)
 				rts = req->ts;

@@ -16,14 +16,14 @@ txn_man::validate_tictoc()
 	for (int rid = 0; rid < row_cnt; rid ++) {
 		if (accesses[rid]->type == WR)
 			write_set[cur_wr_idx ++] = rid;
-		else 
+		else
 			read_set[cur_rd_idx ++] = rid;
 	}
-#if WR_VALIDATION_SEPARATE 
-	// bubble sort the write_set, in primary key order 
+#if WR_VALIDATION_SEPARATE
+	// bubble sort the write_set, in primary key order
 	for (int i = wr_cnt - 1; i >= 1; i--) {
 		for (int j = 0; j < i; j++) {
-			if (accesses[ write_set[j] ]->orig_row->get_primary_key() > 
+			if (accesses[ write_set[j] ]->orig_row->get_primary_key() >
 				accesses[ write_set[j + 1] ]->orig_row->get_primary_key())
 			{
 				int tmp = write_set[j];
@@ -34,12 +34,12 @@ txn_man::validate_tictoc()
 	}
 #else
 	int sorted_set[row_cnt];
-	for (int i = 0; i < row_cnt; i ++) 
+	for (int i = 0; i < row_cnt; i ++)
 		sorted_set[ i ] = i;
 
 	for (int i = row_cnt - 1; i >= 1; i--) {
 		for (int j = 0; j < i; j++) {
-			if (accesses[ sorted_set[j] ]->orig_row->get_primary_key() > 
+			if (accesses[ sorted_set[j] ]->orig_row->get_primary_key() >
 				accesses[ sorted_set[j + 1] ]->orig_row->get_primary_key())
 			{
 				int tmp = sorted_set[j];
@@ -62,18 +62,18 @@ txn_man::validate_tictoc()
 #if ISOLATION_LEVEL == SERIALIZABLE || ISOLATION_LEVEL == REPEATABLE_READ
 	if (commit_rts > commit_wts)
 		commit_wts = commit_rts;
-	else 
+	else
 		commit_rts = commit_wts;
 #endif
 
-#if WR_VALIDATION_SEPARATE 
+#if WR_VALIDATION_SEPARATE
 	bool done = false;
 #endif
 	if (_pre_abort) {
 		for (int i = 0; i < wr_cnt; i++) {
 			row_t * row = accesses[ write_set[i] ]->orig_row;
 			if (row->manager->get_wts() != accesses[ write_set[i] ]->wts)
-			{	
+			{
 				rc = Abort;
 				goto final;
 			}
@@ -84,12 +84,12 @@ txn_man::validate_tictoc()
 			bool lock;
 			uint64_t wts, rts;
 			row->manager->get_ts_word(lock, rts, wts);
-		#if TICTOC_MV 
+		#if TICTOC_MV
 			if (commit_wts > wts && (wts != accesses[ read_set[i] ]->wts))
-		#else 
+		#else
 			if (commit_wts > rts && (wts != accesses[ read_set[i] ]->wts))
 		#endif
-			{	
+			{
 				rc = Abort;
 				goto final;
 			}
@@ -97,7 +97,7 @@ txn_man::validate_tictoc()
 #endif
 	}
 
-#if WR_VALIDATION_SEPARATE 
+#if WR_VALIDATION_SEPARATE
 	if (_validation_no_wait) {
 		while (!done) {
 			num_locks = 0;
@@ -133,9 +133,9 @@ txn_man::validate_tictoc()
 						bool lock;
 						uint64_t wts, rts;
 						access->orig_row->manager->get_ts_word(lock, rts, wts);
-					#if TICTOC_MV 
+					#if TICTOC_MV
 						if (wts != access->wts && commit_wts > wts)
-					#else 
+					#else
 						if (wts != access->wts && commit_wts > rts)
 					#endif
 						{
@@ -145,10 +145,10 @@ txn_man::validate_tictoc()
 					}
 			#endif
 				}
-				PAUSE 
+				PAUSE
 			}
 		}
-	} 
+	}
 	else { // _validation_no_wait = false
 		for (int i = 0; i < wr_cnt; i++) {
 			row_t * row = accesses[ write_set[i] ]->orig_row;
@@ -199,7 +199,7 @@ txn_man::validate_tictoc()
 			if (row->manager->get_rts() + 1 > max_wts)
 				max_wts = row->manager->get_rts() + 1;
 		} else if (accesses[rid]->type == RD) {
-			if (row->manager->get_wts() != accesses[rid]->wts 
+			if (row->manager->get_wts() != accesses[rid]->wts
 					&& max_wts > row->manager->get_wts())
 			{
 				rc = Abort;
@@ -219,11 +219,11 @@ txn_man::validate_tictoc()
 #endif
 final:
 	if (rc == Abort) {
-#if WR_VALIDATION_SEPARATE 
-		for (int i = 0; i < num_locks; i++) 
+#if WR_VALIDATION_SEPARATE
+		for (int i = 0; i < num_locks; i++)
 			accesses[ write_set[i] ]->orig_row->manager->release();
-#else 
-		for (int i = 0; i < num_locks; i++) 
+#else
+		for (int i = 0; i < num_locks; i++)
 			accesses[ sorted_set[i] ]->orig_row->manager->release();
 #endif
 		cleanup(rc);
@@ -234,14 +234,14 @@ final:
 		if (_write_copy_ptr) {
 			assert(false);
 		} else {
-#if WR_VALIDATION_SEPARATE 
+#if WR_VALIDATION_SEPARATE
 			for (int i = 0; i < wr_cnt; i++) {
 				Access * access = accesses[ write_set[i] ];
-				access->orig_row->manager->write_data( 
+				access->orig_row->manager->write_data(
 					access->data, commit_wts);
 				access->orig_row->manager->release();
 			}
-#else 
+#else
 //			for (int i = 0; i < row_cnt; i++) {
 //				Access * access = accesses[ i ];
 //				if (access->type == WR)
@@ -264,9 +264,9 @@ final:
 
 void
 txn_man::update_max_wts(ts_t max_wts)
-{ 
+{
 	assert(false);
-	if (max_wts > _max_wts) 
-		_max_wts = max_wts; 
+	if (max_wts > _max_wts)
+		_max_wts = max_wts;
 }
 #endif

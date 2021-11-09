@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "global.h"
 
@@ -14,19 +14,20 @@ public:
 	uint64_t part_num;
 	uint64_t * part_to_access;
     bool rerun;
+    uint64_t first_run_time;
 };
 
 // All the querise for a particular thread.
 class Query_thd {
 public:
 	void init(workload * h_wl, int thread_id);
-	base_query * get_next_query(); 
+	base_query * get_next_query();
 	uint64_t q_idx;
 #if WORKLOAD == YCSB
 	ycsb_query * queries;
     ycsb_request * long_txn;
     uint64_t * long_txn_part;
-#else 
+#else
 	tpcc_query * queries;
 #endif
 	char pad[CL_SIZE - sizeof(void *) - sizeof(int)];
@@ -34,15 +35,15 @@ public:
 	uint64_t request_cnt;
 };
 
-// TODO we assume a separate task queue for each thread in order to avoid 
-// contention in a centralized query queue. In reality, more sofisticated 
+// TODO we assume a separate task queue for each thread in order to avoid
+// contention in a centralized query queue. In reality, more sofisticated
 // queue model might be implemented.
 class Query_queue {
 public:
 	void init(workload * h_wl);
 	void init_per_thread(int thread_id);
-	base_query * get_next_query(uint64_t thd_id); 
-	
+	base_query * get_next_query(uint64_t thd_id);
+
 private:
 	static void * threadInitQuery(void * This);
 

@@ -7,7 +7,7 @@
 class table_t;
 class INDEX;
 class tpcc_query;
-	
+
 #define IC3_TPCC_NEW_ORDER_PIECES   8
 #define IC3_TPCC_PAYMENT_PIECES     4
 #define IC3_TPCC_DELIVERY_PIECES    4
@@ -36,8 +36,8 @@ public:
 	INDEX * 	i_stock;
 	INDEX * 	i_order; // key = (w_id, d_id, o_id)
 	INDEX * 	i_orderline; // key = (w_id, d_id, o_id)
-	INDEX * 	i_orderline_wd; // key = (w_id, d_id). 
-	
+	INDEX * 	i_orderline_wd; // key = (w_id, d_id).
+
 	bool ** delivering;
 	uint32_t next_tid;
 #if CC_ALG == IC3
@@ -54,7 +54,7 @@ private:
 	void init_tab_cust(uint64_t d_id, uint64_t w_id);
 	void init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id);
 	void init_tab_order(uint64_t d_id, uint64_t w_id);
-	
+
 	void init_permutation(uint64_t * perm_c_id, uint64_t wid);
 
 	static void * threadInitItem(void * This);
@@ -71,7 +71,7 @@ private:
 class tpcc_txn_man : public txn_man
 {
 public:
-	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id); 
+	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id);
 	RC run_txn(base_query * query);
 private:
 	tpcc_wl * _wl;
@@ -80,6 +80,24 @@ private:
 	RC run_order_status(tpcc_query * query);
 	RC run_delivery(tpcc_query * query);
 	RC run_stock_level(tpcc_query * query);
+
+#if CC_ALG == ORDERED_LOCK
+    void ol_prepare_payment(const tpcc_query *const query);
+    bool ol_prepare_new_order(const tpcc_query *const query);
+    void ol_finish_tpcc();
+#endif
+
+#if CC_ALG == BASIC_SCHED
+    void bs_prepare_payment(const tpcc_query *const query);
+    bool bs_prepare_new_order(const tpcc_query *const query);
+    void bs_finish_tpcc();
+#endif
+
+#if CC_ALG == QCC
+    struct qcc_txn *qcc_prepare_payment(const tpcc_query *const query);
+    struct qcc_txn *qcc_prepare_new_order(const tpcc_query *const query);
+#endif
+
 	bool has_local_row(row_t * location, access_t type, row_t * local, access_t local_type) {
 	    if (location == local) {
 	        if ((type == local_type) || (local_type == WR)) {

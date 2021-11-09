@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 class table_t;
 class Catalog;
@@ -12,10 +12,10 @@ class Row_silo {
 public:
 	void 				init(row_t * row);
 	RC 					access(txn_man * txn, TsType type, row_t * local_row);
-	
+
 	bool				validate(ts_t tid, bool in_write_set);
 	void				write(row_t * data, uint64_t tid);
-	
+
 	void 				lock();
 	void 				release();
 	bool				try_lock();

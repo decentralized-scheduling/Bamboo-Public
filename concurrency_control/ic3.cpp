@@ -95,7 +95,7 @@ void txn_man::begin_piece(int piece_id) {
         continue;
     }
   }
-  INC_TMP_STATS(get_thd_id(), time_wait, get_sys_clock() - starttime);
+  //INC_TMP_STATS(get_thd_id(), time_wait, get_sys_clock() - starttime);
 #endif
 }
 
@@ -146,7 +146,7 @@ RC txn_man::end_piece(int piece_id) {
         continue;
     }
   }
-  INC_TMP_STATS(get_thd_id(), time_wait, get_sys_clock() - starttime);
+  //INC_TMP_STATS(get_thd_id(), time_wait, get_sys_clock() - starttime);
   } // if (cedges != NULL), skip to validate phase.
   else
 	  return RCOK;
@@ -295,7 +295,7 @@ RC txn_man::end_piece(int piece_id) {
         num_locked--;
       }
 #endif
-      INC_STATS(get_thd_id(), time_abort, get_sys_clock() - piece_starttime);
+      //INC_STATS(get_thd_id(), time_abort, get_sys_clock() - piece_starttime);
     }
     assert(num_locked == 0);
     // reset access marker
@@ -308,7 +308,7 @@ RC txn_man::end_piece(int piece_id) {
 RC
 txn_man::validate_ic3() {
   // for T' in depqueue, wait till T' commit
-#if PF_BASIC 
+#if PF_BASIC
   uint64_t starttime = get_sys_clock();
 #endif
   for (int i = 0; i < depqueue_sz; i++) {
@@ -321,7 +321,7 @@ txn_man::validate_ic3() {
       return Abort;
     }
   }
-#if PF_BASIC 
+#if PF_BASIC
   INC_STATS(get_thd_id(), time_commit, get_sys_clock() - starttime);
 #endif
   Access * access;

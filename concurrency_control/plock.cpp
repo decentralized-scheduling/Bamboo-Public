@@ -30,7 +30,7 @@ RC PartMan::lock(txn_man * txn) {
 			if (txn->get_ts() > waiters[i - 1]->get_ts()) {
 				waiters[i] = txn;
 				break;
-			} else 
+			} else
 				waiters[i] = waiters[i - 1];
 		}
 		if (i == 0)
@@ -46,24 +46,24 @@ RC PartMan::lock(txn_man * txn) {
 
 void PartMan::unlock(txn_man * txn) {
 	pthread_mutex_lock( &latch );
-	if (txn == owner) {		
-		if (waiter_cnt == 0) 
+	if (txn == owner) {
+		if (waiter_cnt == 0)
 			owner = NULL;
 		else {
-			owner = waiters[0];			
+			owner = waiters[0];
 			for (UInt32 i = 0; i < waiter_cnt - 1; i++) {
 				assert( waiters[i]->get_ts() < waiters[i + 1]->get_ts() );
 				waiters[i] = waiters[i + 1];
 			}
 			waiter_cnt --;
 			ATOM_SUB(owner->ready_part, 1);
-		} 
+		}
 	} else {
 		bool find = false;
 		for (UInt32 i = 0; i < waiter_cnt; i++) {
-			if (waiters[i] == txn) 
+			if (waiters[i] == txn)
 				find = true;
-			if (find && i < waiter_cnt - 1) 
+			if (find && i < waiter_cnt - 1)
 				waiters[i] = waiters[i + 1];
 		}
 		ATOM_SUB(txn->ready_part, 1);
@@ -99,19 +99,19 @@ RC Plock::lock(txn_man * txn, uint64_t * parts, uint64_t part_cnt) {
 			part_mans[part_id]->unlock(txn);
 		}
 		assert(txn->ready_part == 0);
-		INC_TMP_STATS(txn->get_thd_id(), time_man, get_sys_clock() - starttime);
+		//INC_TMP_STATS(txn->get_thd_id(), time_man, get_sys_clock() - starttime);
 		return Abort;
 	}
 	if (txn->ready_part > 0) {
 		ts_t t = get_sys_clock();
 		while (txn->ready_part > 0) {}
-		INC_TMP_STATS(txn->get_thd_id(), time_wait, get_sys_clock() - t);
+		//INC_TMP_STATS(txn->get_thd_id(), time_wait, get_sys_clock() - t);
 		#if DEBUG_WW
 			printf("[plock] increment time wait %lu\n", get_sys_clock() - t);
 		#endif
 	}
 	assert(txn->ready_part == 0);
-	INC_TMP_STATS(txn->get_thd_id(), time_man, get_sys_clock() - starttime);
+	//INC_TMP_STATS(txn->get_thd_id(), time_man, get_sys_clock() - starttime);
 	return RCOK;
 }
 
@@ -121,5 +121,5 @@ void Plock::unlock(txn_man * txn, uint64_t * parts, uint64_t part_cnt) {
 		uint64_t part_id = parts[i];
 		part_mans[part_id]->unlock(txn);
 	}
-	INC_TMP_STATS(txn->get_thd_id(), time_man, get_sys_clock() - starttime);
+	//INC_TMP_STATS(txn->get_thd_id(), time_man, get_sys_clock() - starttime);
 }

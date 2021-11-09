@@ -11,7 +11,7 @@ public:
 	void 				init(row_t * row);
 	RC 					access(txn_man * txn, TsType type);
 	void 				latch();
-	// ts is the start_ts of the validating txn 
+	// ts is the start_ts of the validating txn
 	bool				validate(uint64_t ts);
 	void				write(row_t * data, uint64_t ts);
 	void 				release();

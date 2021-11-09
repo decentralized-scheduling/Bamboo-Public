@@ -6,13 +6,13 @@ class Catalog;
 class txn_man;
 
 // Only a constant number of versions can be maintained.
-// If a request accesses an old version that has been recycled,   
+// If a request accesses an old version that has been recycled,
 // simply abort the request.
 
 #if CC_ALG == HEKATON
 
 struct WriteHisEntry {
-	bool begin_txn;	
+	bool begin_txn;
 	bool end_txn;
 	ts_t begin;
 	ts_t end;
@@ -37,7 +37,7 @@ private:
 	uint32_t 		_his_oldest;
 	WriteHisEntry * _write_history; // circular buffer
 	bool  			_exists_prewrite;
-	
+
 	uint32_t 		_his_len;
 };
 

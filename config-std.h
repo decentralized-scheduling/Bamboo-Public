@@ -4,8 +4,8 @@
 /***********************************************/
 // Simulation + Hardware
 /***********************************************/
-#define TERMINATE_BY_COUNT         true
-#define THREAD_CNT					20
+#define TERMINATE_BY_COUNT          true
+#define THREAD_CNT					10
 #define PART_CNT					1
 // each transaction only accesses 1 virtual partition. But the lock/ts manager and index are not aware of such partitioning. VIRTUAL_PART_CNT describes the request distribution and is only used to generate queries. For HSTORE, VIRTUAL_PART_CNT should be the same as PART_CNT.
 #define VIRTUAL_PART_CNT			1
@@ -15,13 +15,13 @@
 #define CPU_FREQ 					2.6 // in GHz/s
 
 // # of transactions to run for warmup
-#define WARMUP						1000
+#define WARMUP						0
 // YCSB or TPCC
 #define WORKLOAD                    YCSB
 // print the transaction latency distribution
 #define PRT_LAT_DISTR				false
 #define STATS_ENABLE				true
-#define TIME_ENABLE					true
+#define TIME_ENABLE					false
 
 #define MEM_ALLIGN					8
 
@@ -40,7 +40,7 @@
 /***********************************************/
 // WAIT_DIE, NO_WAIT, DL_DETECT, TIMESTAMP, MVCC, HEKATON, HSTORE, OCC, VLL, TICTOC, SILO
 // TODO TIMESTAMP does not work at this moment
-#define CC_ALG                      BAMBOO
+#define CC_ALG                      QCC
 #define ISOLATION_LEVEL 			SERIALIZABLE
 
 // latch options
@@ -54,7 +54,7 @@
 #define CENTRAL_MAN					false
 #define BUCKET_CNT					31
 #define ABORT_PENALTY 				10000
-#define ABORT_BUFFER_SIZE			1
+#define ABORT_BUFFER_SIZE			3
 #define ABORT_BUFFER_ENABLE			true
 // [ INDEX ]
 #define ENABLE_LATCH				false
@@ -109,10 +109,12 @@
 // [WW]
 #define WW_STARV_FREE               false // set false if compared w/ bamboo
 // [IC3]
-#define IC3_EAGER_EXEC              true 
+#define IC3_EAGER_EXEC              true
 #define IC3_RENDEZVOUS              true
 #define IC3_FIELD_LOCKING           false // should not be true
 #define IC3_MODIFIED_TPCC           false
+// [QCC]
+#define QCC_GENERAL                 false
 
 /***********************************************/
 // Logging
@@ -130,13 +132,13 @@
 // max number of rows touched per transaction
 #define MAX_ROW_PER_TXN				64
 #define QUERY_INTVL 				1UL
-#define MAX_TXN_PER_PART 			10000
+#define MAX_TXN_PER_PART 			100000
 #define FIRST_PART_LOCAL 			true
 #define MAX_TUPLE_SIZE				1024 // in bytes
 #define MAX_FIELD_SIZE                          50
 // ==== [YCSB] ====
 #define INIT_PARALLELISM			40
-#define SYNTH_TABLE_SIZE 			(1024 * 5)
+#define SYNTH_TABLE_SIZE 			(1024 * 1024 * 10)
 #define ZIPF_THETA 					0.9
 #define READ_PERC 					1
 #define WRITE_PERC 					1  // if want no scan, write + read >= 1
@@ -149,7 +151,7 @@
 #define LONG_TXN_READ_RATIO			0.5
 #define FIELD_PER_TUPLE				10
 // ==== [YCSB-synthetic] ====
-#define SYNTHETIC_YCSB              true
+#define SYNTHETIC_YCSB              false
 #define POS_HS                      TOP
 #define SPECIFIED_RATIO             0
 #define FLIP_RATIO                  0
@@ -231,7 +233,7 @@ extern TestCases					g_test_case;
 #define DEBUG_TMP					false
 
 /***********************************************/
-// PROFILING 
+// PROFILING
 /***********************************************/
 #define PF_BASIC					false
 #define PF_CS          					false // profiling inside critical path
@@ -267,6 +269,9 @@ extern TestCases					g_test_case;
 #define WOUND_WAIT                  12
 #define BAMBOO                      13
 #define IC3                         14
+#define ORDERED_LOCK                15
+#define BASIC_SCHED                 16
+#define QCC                         64
 //Isolation Levels
 #define SERIALIZABLE				1
 #define SNAPSHOT					2

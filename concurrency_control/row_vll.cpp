@@ -3,25 +3,25 @@
 #include "global.h"
 #include "helper.h"
 
-void 
+void
 Row_vll::init(row_t * row) {
 	_row = row;
 	cs = 0;
 	cx = 0;
 }
 
-bool 
+bool
 Row_vll::insert_access(access_t type) {
 	if (type == RD) {
 		cs ++;
 		return (cx > 0);
-	} else { 
+	} else {
 		cx ++;
 		return (cx > 1) || (cs > 0);
 	}
 }
 
-void 
+void
 Row_vll::remove_access(access_t type) {
 	if (type == RD) {
 		assert (cs > 0);

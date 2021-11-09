@@ -28,6 +28,7 @@ class thread_t {
     ts_t 		get_next_ts();
     ts_t 		get_next_n_ts(int n);
 
+    Stat_latency txn_commit_latency;
 
   private:
     uint64_t 	_host_cid;

@@ -16,6 +16,9 @@
 #include "row_bamboo.h"
 //#include "row_bamboo_pt.h"
 #include "row_ic3.h"
+#include "row_ol.h"
+#include "row_sched.h"
+#include "row_qcc.h"
 #include "mem_alloc.h"
 #include "manager.h"
 
@@ -79,6 +82,12 @@ void row_t::init_manager(row_t * row) {
   new(manager) Row_bamboo();
 #elif CC_ALG == IC3
   manager = (Row_ic3 *) _mm_malloc(sizeof(Row_ic3), 64);
+#elif CC_ALG == ORDERED_LOCK
+  manager = (Row_ol *) mem_allocator.alloc(sizeof(Row_ol), _part_id);
+#elif CC_ALG == BASIC_SCHED
+  manager = (Row_sched *) mem_allocator.alloc(sizeof(Row_sched), _part_id);
+#elif CC_ALG == QCC
+  manager = (Row_qcc *) mem_allocator.alloc(sizeof(Row_qcc), _part_id);
 #endif
 
 #if CC_ALG != HSTORE
@@ -261,7 +270,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, Access * access) {
     return rc;
   } else if (rc == WAIT) {
     ASSERT(CC_ALG == WAIT_DIE || CC_ALG == DL_DETECT || CC_ALG == WOUND_WAIT || CC_ALG == BAMBOO);
-    uint64_t starttime = get_sys_clock();
+    uint64_t starttime = get_server_clock();
     #if CC_ALG == DL_DETECT
     bool dep_added = false;
     #endif
@@ -277,7 +286,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, Access * access) {
     #elif CC_ALG == DL_DETECT
       uint64_t last_detect = starttime;
       uint64_t last_try = starttime;
-      uint64_t now = get_sys_clock();
+      uint64_t now = get_server_clock();
       if (now - starttime > g_timeout ) {
 				txn->lock_abort = true;
 				break;
@@ -299,13 +308,13 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, Access * access) {
 	  ok = dl_detector.detect_cycle(txn->get_txn_id());
 	  if (ok == 16)  // failed to lock the deadlock detector
 	    last_try = now;
-	  else if (ok == 0) 
+	  else if (ok == 0)
 	    last_detect = now;
           else if (ok == 1) {
 	    last_detect = now;
           }
         }
-      } else 
+      } else
         PAUSE
     #endif
     }
@@ -320,8 +329,9 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, Access * access) {
 #endif
       return Abort;
     }
-    endtime = get_sys_clock();
-    INC_TMP_STATS(thd_id, time_wait, endtime - starttime);
+    endtime = get_sys_clock(); // sys_clock.. because this is for stat only
+    (void)endtime;
+    //INC_TMP_STATS(thd_id, time_wait, endtime - starttime);
   } else if (rc == FINISH) {
     // RAW optimization, need to return data for read
   }
@@ -334,23 +344,23 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, Access * access) {
 	// So for MVCC RD-WR, the version should be explicitly copied.
 	//row_t * newr = NULL;
   #if CC_ALG == TIMESTAMP
-	// TODO. should not call malloc for each row read. Only need to call malloc once 
+	// TODO. should not call malloc for each row read. Only need to call malloc once
 	// before simulation starts, like TicToc and Silo.
 	txn->cur_row = (row_t *) mem_allocator.alloc(sizeof(row_t), this->get_part_id());
 	txn->cur_row->init(get_table(), this->get_part_id());
   #endif
 
 	// TODO need to initialize the table/catalog information.
-	TsType ts_type = (type == RD)? R_REQ : P_REQ; 
+	TsType ts_type = (type == RD)? R_REQ : P_REQ;
 	rc = this->manager->access(txn, ts_type, row);
 	if (rc == RCOK ) {
 		row = txn->cur_row;
 	} else if (rc == WAIT) {
-		uint64_t t1 = get_sys_clock();
+		uint64_t t1 = get_server_clock();
 		while (!txn->ts_ready)
 			PAUSE
-		uint64_t t2 = get_sys_clock();
-		INC_TMP_STATS(thd_id, time_wait, t2 - t1);
+		uint64_t t2 = get_server_clock();
+		//INC_TMP_STATS(thd_id, time_wait, t2 - t1);
 		row = txn->cur_row;
 	}
 	if (rc != Abort) {
@@ -368,12 +378,26 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, Access * access) {
 #elif CC_ALG == TICTOC || CC_ALG == SILO
 	// like OCC, tictoc also makes a local copy for each read/write
 	row->table = get_table();
-	TsType ts_type = (type == RD)? R_REQ : P_REQ; 
+	TsType ts_type = (type == RD)? R_REQ : P_REQ;
 	rc = this->manager->access(txn, ts_type, row);
 	return rc;
-#elif CC_ALG == HSTORE || CC_ALG == VLL
+#elif CC_ALG == HSTORE || CC_ALG == VLL || CC_ALG == ORDERED_LOCK || CC_ALG == BASIC_SCHED
+    // ordered lock just return the original row, as we have handled ALL locks in the benchmark code
+    // this is also the case for basic scheduling, as a centralized thread handles everything
 	row = this;
 	return rc;
+#elif CC_ALG == QCC
+    assert(rc == RCOK);
+    if (type == WR) {
+        // for write, point the data ptr to buf
+        row = access->buf; // data = buf
+        row->table = get_table();
+        row->copy(this); // copy to buf..
+    } else {
+        // otherwise, just refer the original row in data
+        row = this;
+    }
+    return rc;
 #else
 	assert(false);
 	return rc;
@@ -409,10 +433,10 @@ void row_t::return_row(access_t type, row_t * row, LockEntry * lock_entry) {
 }
 #endif
 
-// the "row" is the row read out in get_row(). 
-// For locking based CC_ALG, the "row" is the same as "this". 
+// the "row" is the row read out in get_row().
+// For locking based CC_ALG, the "row" is the same as "this".
 // For timestamp based CC_ALG, the "row" != "this", and the "row" must be freed.
-// For MVCC, the row will simply serve as a version. The version will be 
+// For MVCC, the row will simply serve as a version. The version will be
 // delete during history cleanup.
 // For TIMESTAMP, the row will be explicity deleted at the end of access().
 // (cf. row_ts.cpp)
@@ -420,7 +444,7 @@ void row_t::return_row(access_t type, txn_man * txn, row_t * row) {
 #if CC_ALG == TIMESTAMP || CC_ALG == MVCC
   // for RD or SCAN or XP, the row should be deleted.
 	// because all WR should be companied by a RD
-	// for MVCC RD, the row is not copied, so no need to free. 
+	// for MVCC RD, the row is not copied, so no need to free.
   #if CC_ALG == TIMESTAMP
 	if (type == RD || type == SCAN) {
 		row->free_row();
@@ -445,8 +469,14 @@ void row_t::return_row(access_t type, txn_man * txn, row_t * row) {
 #elif CC_ALG == TICTOC || CC_ALG == SILO
   assert (row != NULL);
 	return;
-#elif CC_ALG == HSTORE || CC_ALG == VLL
-  return;
+#elif CC_ALG == HSTORE || CC_ALG == VLL || CC_ALG == ORDERED_LOCK || CC_ALG == BASIC_SCHED
+    // similarly, ordered lock does not do anything
+    // well.. also for basic sched
+    return;
+#elif CC_ALG == QCC
+    // no need to to anything..
+    assert(row);
+    return;
 #else
   assert(false);
 #endif

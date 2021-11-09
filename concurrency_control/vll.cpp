@@ -10,7 +10,7 @@
 #include "mem_alloc.h"
 #if CC_ALG == VLL
 
-void 
+void
 VLLMan::init() {
 	_txn_queue_size = 0;
 	_txn_queue = NULL;
@@ -19,7 +19,7 @@ VLLMan::init() {
 
 void
 VLLMan::vllMainLoop(txn_man * txn, base_query * query) {
-	
+
 	ycsb_query * m_query = (ycsb_query *) query;
 	// access the indexes. This is not in the critical section
 	for (int rid = 0; rid < m_query->request_cnt; rid ++) {
@@ -41,9 +41,9 @@ VLLMan::vllMainLoop(txn_man * txn, base_query * query) {
 uint64_t t5 = get_sys_clock();
 		pthread_mutex_lock(&_mutex);
 uint64_t tt5 = get_sys_clock() - t5;
-INC_STATS(txn->get_thd_id(), debug5, tt5);
+//INC_STATS(txn->get_thd_id(), debug5, tt5);
 
-		
+
 		TxnQEntry * front = _txn_queue;
 		if (front)
 			front_txn = front->txn;
@@ -60,7 +60,7 @@ INC_STATS(txn->get_thd_id(), debug5, tt5);
 			if (ok == 2) {
 				execute(txn, query);
 				finishTxn(txn, entry);
-			} 
+			}
 			assert(ok == 1 || ok == 2);
 			done = true;
 		}
@@ -71,30 +71,30 @@ INC_STATS(txn->get_thd_id(), debug5, tt5);
 int
 VLLMan::beginTxn(txn_man * txn, base_query * query, TxnQEntry *& entry) {
 
-	int ret = -1;	
+	int ret = -1;
 	if (_txn_queue_size >= TXN_QUEUE_SIZE_LIMIT)
 		ret = 3;
 
 	txn->vll_txn_type = VLL_Free;
 	assert(WORKLOAD == YCSB);
-	
+
 	for (int rid = 0; rid < txn->row_cnt; rid ++ ) {
 		access_t type = txn->accesses[rid]->type;
 		if (txn->accesses[rid]->orig_row->manager->insert_access(type))
 			txn->vll_txn_type = VLL_Blocked;
 	}
-	
+
 	entry = getQEntry();
 	LIST_PUT_TAIL(_txn_queue, _txn_queue_tail, entry);
 	if (txn->vll_txn_type == VLL_Blocked)
 		ret = 1;
-	else 
+	else
 		ret = 2;
 	pthread_mutex_unlock(&_mutex);
 	return ret;
 }
 
-void 
+void
 VLLMan::execute(txn_man * txn, base_query * query) {
 	RC rc;
 uint64_t t3 = get_sys_clock();
@@ -116,16 +116,16 @@ uint64_t t3 = get_sys_clock();
 				char * data = row->get_data();
 				*(uint64_t *)(&data[fid * 100]) = 0;
 			}
-		} 
+		}
 	}
 uint64_t tt3 = get_sys_clock() - t3;
-INC_STATS(txn->get_thd_id(), debug3, tt3);
+//INC_STATS(txn->get_thd_id(), debug3, tt3);
 }
 
-void 
+void
 VLLMan::finishTxn(txn_man * txn, TxnQEntry * entry) {
 	pthread_mutex_lock(&_mutex);
-	
+
 	for (int rid = 0; rid < txn->row_cnt; rid ++ ) {
 		access_t type = txn->accesses[rid]->type;
 		txn->accesses[rid]->orig_row->manager->remove_access(type);
@@ -137,7 +137,7 @@ VLLMan::finishTxn(txn_man * txn, TxnQEntry * entry) {
 }
 
 
-TxnQEntry * 
+TxnQEntry *
 VLLMan::getQEntry() {
 	TxnQEntry * entry = (TxnQEntry *) mem_allocator.alloc(sizeof(TxnQEntry), 0);
 	entry->prev = NULL;
@@ -146,7 +146,7 @@ VLLMan::getQEntry() {
 	return entry;
 }
 
-void 
+void
 VLLMan::returnQEntry(TxnQEntry * entry) {
  	mem_allocator.free(entry, sizeof(TxnQEntry));
 }

@@ -88,8 +88,8 @@ RC Row_lock::lock_get(lock_t type, txn_man * txn, uint64_t* &txnids,
   assert(waiter_cnt < g_thread_cnt);
 #if DEBUG_ASSERT
   if (owners != NULL)
-		assert(lock_type == owners->type); 
-	else 
+		assert(lock_type == owners->type);
+	else
 		assert(lock_type == LOCK_NONE);
 	LockEntry * en = owners;
 	UInt32 cnt = 0;
@@ -300,7 +300,7 @@ bool Row_lock::conflict_lock(lock_t l1, lock_t l2) {
     return false;
 }
 
-inline 
+inline
 LockEntry * Row_lock::get_entry(Access * access) {
   //LockEntry * entry = (LockEntry *) mem_allocator.alloc(sizeof(LockEntry),
   // _row->get_part_id());
@@ -310,12 +310,12 @@ LockEntry * Row_lock::get_entry(Access * access) {
   entry->prev = NULL;
   entry->status = LOCK_DROPPED;
   return entry;
-  #else 
+  #else
   return NULL;
   #endif
 }
 
-inline 
+inline
 void Row_lock::return_entry(LockEntry * entry) {
   //mem_allocator.free(entry, sizeof(LockEntry));
   entry->next = NULL;

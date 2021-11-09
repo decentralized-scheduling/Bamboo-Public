@@ -87,7 +87,7 @@ void Stats::abort(uint64_t thd_id) {
     tmp_stats[thd_id]->init();
 }
 
-void Stats::print() {
+void Stats::print(uint64_t _time) {
   ALL_METRICS(INIT_TOTAL_VAR, INIT_TOTAL_VAR, INIT_TOTAL_VAR)
   for (uint64_t tid = 0; tid < g_thread_cnt; tid ++) {
     ALL_METRICS(SUM_UP_STATS, SUM_UP_STATS, MAX_STATS)
@@ -102,7 +102,7 @@ void Stats::print() {
     ofstream outf(output_file);
     if (outf.is_open()) {
       outf << "[summary] throughput=" << total_txn_cnt / total_run_time *
-      BILLION * THREAD_CNT << ", ";
+      BILLION * THREAD_CNT / 1e6 << ", ";
       ALL_METRICS(WRITE_STAT_X, WRITE_STAT_Y, WRITE_STAT_Y)
       outf << "deadlock_cnt=" << deadlock << ", ";
       outf << "cycle_detect=" << cycle_detect << ", ";
@@ -112,7 +112,7 @@ void Stats::print() {
     }
   }
   std::cout << "[summary] throughput=" << total_txn_cnt / total_run_time *
-      BILLION * THREAD_CNT << ", ";
+      BILLION * THREAD_CNT / 1e6 << ", ";
   ALL_METRICS(PRINT_STAT_X, PRINT_STAT_Y, PRINT_STAT_Y)
   std::cout << "deadlock_cnt=" << deadlock << ", ";
   std::cout << "cycle_detect=" << cycle_detect << ", ";
@@ -120,6 +120,9 @@ void Stats::print() {
   std::cout << "dl_wait_time=" << dl_wait_time / BILLION << "\n";
   if (g_prt_lat_distr)
     print_lat_distr();
+  printf("[summary!] mtxns=%.4f, txn_cnt=%lu, abort_cnt=%lu, arate=%.4f\n",
+          total_txn_cnt *1e3 / _time , total_txn_cnt, total_abort_cnt,
+          (double)total_abort_cnt / (total_txn_cnt + total_abort_cnt));
 }
 
 void Stats::print_lat_distr() {

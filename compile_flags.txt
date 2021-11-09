@@ -1,0 +1,7 @@
+-xc++
+-I.
+-I./benchmarks
+-I./concurrency_control
+-I./storage
+-I./system
+-I./qcc

@@ -16,7 +16,7 @@ txn_man::validate_silo()
 	for (int rid = 0; rid < row_cnt; rid ++) {
 		if (accesses[rid]->type == WR)
 			write_set[cur_wr_idx ++] = rid;
-		else 
+		else
 			read_set[cur_rd_idx ++] = rid;
 	}
 
@@ -42,8 +42,8 @@ txn_man::validate_silo()
 			if (row->manager->get_tid() != accesses[write_set[i]]->tid) {
 				rc = Abort;
 				goto final;
-			}	
-		}	
+			}
+		}
 		for (int i = 0; i < row_cnt - wr_cnt; i ++) {
 			Access * access = accesses[ read_set[i] ];
 			if (access->orig_row->manager->get_tid() != accesses[read_set[i]]->tid) {
@@ -81,8 +81,8 @@ txn_man::validate_silo()
 						if (row->manager->get_tid() != accesses[write_set[i]]->tid) {
 							rc = Abort;
 							goto final;
-						}	
-					}	
+						}
+					}
 					for (int i = 0; i < row_cnt - wr_cnt; i ++) {
 						Access * access = accesses[ read_set[i] ];
 						if (access->orig_row->manager->get_tid() != accesses[read_set[i]]->tid) {
@@ -131,17 +131,17 @@ txn_man::validate_silo()
 	}
 	if (max_tid > _cur_tid)
 		_cur_tid = max_tid + 1;
-	else 
+	else
 		_cur_tid ++;
 final:
 	if (rc == Abort) {
-		for (int i = 0; i < num_locks; i++) 
+		for (int i = 0; i < num_locks; i++)
 			accesses[ write_set[i] ]->orig_row->manager->release();
 		cleanup(rc);
 	} else {
 		for (int i = 0; i < wr_cnt; i++) {
 			Access * access = accesses[ write_set[i] ];
-			access->orig_row->manager->write( 
+			access->orig_row->manager->write(
 				access->data, _cur_tid );
 			accesses[ write_set[i] ]->orig_row->manager->release();
 		}

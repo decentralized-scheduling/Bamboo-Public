@@ -38,6 +38,9 @@ class Row_ww;
 class Row_bamboo;
 //class Row_bamboo_pt;
 class Row_ic3;
+class Row_ol;
+class Row_sched;
+class Row_qcc;
 #if CC_ALG == WOUND_WAIT || CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
 struct LockEntry;
 #elif CC_ALG == BAMBOO
@@ -137,6 +140,12 @@ class row_t
 	Row_bamboo * manager;
   #elif CC_ALG == IC3
 	Row_ic3 * manager;
+  #elif CC_ALG == ORDERED_LOCK
+    Row_ol * manager;
+  #elif CC_ALG == BASIC_SCHED
+    Row_sched * manager;
+  #elif CC_ALG == QCC
+    Row_qcc * manager;
 #endif
     char * data;
     table_t * table;

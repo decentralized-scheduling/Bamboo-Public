@@ -12,6 +12,7 @@
 // for info of lock entry
 #include "row_lock.h"
 #include "row_bamboo.h"
+#include "row_ol.h"
 
 void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
     this->h_thd = h_thd;
@@ -19,7 +20,7 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
     lock_ready = false;
     lock_abort = false;
     timestamp = 0;
-#if PF_ABORT 
+#if PF_ABORT
     abort_chain = 0;
 #endif
 #if CC_ALG == BAMBOO
@@ -34,9 +35,21 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
     insert_cnt = 0;
     // init accesses
     accesses = (Access **) _mm_malloc(sizeof(Access *) * MAX_ROW_PER_TXN, 64);
+
+#if CC_ALG != QCC
     for (int i = 0; i < MAX_ROW_PER_TXN; i++)
         accesses[i] = NULL;
     num_accesses_alloc = 0;
+#else
+    for (int i = 0; i < MAX_ROW_PER_TXN; i++) {
+        Access *access = (Access *) _mm_malloc(sizeof(Access), 64);
+        access->buf = (row_t *) _mm_malloc(sizeof(row_t), 64);
+        access->buf->init(MAX_TUPLE_SIZE);
+        accesses[i] = access;
+    }
+    num_accesses_alloc = MAX_ROW_PER_TXN;
+#endif
+
 #if CC_ALG == TICTOC || CC_ALG == SILO
     _pre_abort = (g_params["pre_abort"] == "true");
     if (g_params["validation_lock"] == "no-wait")
@@ -58,6 +71,15 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
     depqueue[i] = NULL;
   depqueue_sz = 0;
   piece_starttime = 0;
+#elif CC_ALG == ORDERED_LOCK
+    memset(&rows[0], 0, sizeof(rows[0]) * MAX_ROW_PER_TXN);
+    nr_rows = 0;
+#elif CC_ALG == QCC
+    memset(&rows[0], 0, sizeof(rows[0]) * MAX_ROW_PER_TXN);
+    nr_rows = 0;
+    memset(&queues[0], 0, sizeof(queues[0]) * MAX_ROW_PER_TXN);
+    nr_queues = 0;
+    memset(&row_buffer[0], 0, sizeof(row_buffer[0]) * MAX_ROW_PER_TXN);
 #endif
 }
 
@@ -71,7 +93,7 @@ void txn_man::set_txn_id(txnid_t txn_id) {
     //commit_barriers = g_thread_cnt << 2;
     //addr_barriers = &(tmp_barriers);
     if (g_last_retire > 0)
-        start_ts = get_sys_clock();
+        start_ts = get_server_clock();
 #endif
 #endif
 #if CC_ALG == IC3
@@ -124,7 +146,6 @@ ts_t txn_man::get_ts() {
 }
 
 void txn_man::cleanup(RC rc) {
-
 #if CC_ALG == HEKATON || CC_ALG == IC3
     row_cnt = 0;
     wr_cnt = 0;
@@ -176,6 +197,7 @@ void txn_man::cleanup(RC rc) {
                 orig_r->return_row(type, accesses[rid]->data, accesses[rid]->lock_entry);
             }
 #else
+            // QCC goes here! (and ordered_lock)
             orig_r->return_row(type, this, accesses[rid]->data);
 #endif
 #if COMMUTATIVE_OPS && !COMMUTATIVE_LATCH
@@ -206,6 +228,10 @@ void txn_man::cleanup(RC rc) {
 #if CC_ALG == DL_DETECT
     dl_detector.clear_dep(get_txn_id());
 #endif
+
+#if CC_ALG == ORDERED_LOCK
+    nr_rows = 0;
+#endif
 }
 
 
@@ -230,14 +256,21 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
         return row;
     uint64_t starttime = get_sys_clock();
     RC rc = RCOK;
+
+
     if (accesses[row_cnt] == NULL) {
+        assert(CC_ALG != QCC); // QCC won't go into this loop because of pre-allocation
         assert(row_cnt < MAX_ROW_PER_TXN);
+
         Access *access = (Access *) _mm_malloc(sizeof(Access), 64);
+
 #if COMMUTATIVE_OPS
         // init
     access->com_op = COM_NONE;
 #endif
+
         accesses[row_cnt] = access;
+
 #if (CC_ALG == SILO || CC_ALG == TICTOC)
         access->data = (row_t *) _mm_malloc(sizeof(row_t), 64);
         access->data->init(MAX_TUPLE_SIZE);
@@ -274,8 +307,11 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
     access->orig_data = (row_t *) _mm_malloc(sizeof(row_t), 64);
     access->orig_data->init(MAX_TUPLE_SIZE);
 #endif
+
         num_accesses_alloc++;
     }
+
+
     //printf("txn-%lu access(%p) row %p at access[%d]\n", txn_id, accesses[row_cnt], row , row_cnt);
 #if (CC_ALG == WOUND_WAIT) || (CC_ALG == BAMBOO)
     rc = row->get_row(type, this, accesses[ row_cnt ]->orig_row,
@@ -303,6 +339,15 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
   #if !IC3_FIELD_LOCKING
   row->get_row(type, this, row, accesses[row_cnt]);
   #endif
+#elif CC_ALG == QCC
+  assert(row_cnt < MAX_ROW_PER_TXN);
+  // pass data in
+  rc = row->get_row(type, this, accesses[row_cnt]->data, accesses[row_cnt]);
+  if (rc == Abort) {
+      return NULL;
+  }
+  accesses[row_cnt]->orig_row = row;
+  // now, data and orig_row are both set
 #else
   rc = row->get_row(type, this, accesses[ row_cnt ]->data, accesses[row_cnt]);
   if (rc == Abort)
@@ -356,7 +401,7 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
     }
 
     uint64_t timespan = get_sys_clock() - starttime;
-    INC_TMP_STATS(get_thd_id(), time_man, timespan);
+    //INC_TMP_STATS(get_thd_id(), time_man, timespan);
 
 #if  (CC_ALG == WOUND_WAIT)
     if (type == WR)
@@ -407,7 +452,7 @@ txn_man::index_read(INDEX * index, idx_key_t key, int part_id) {
     uint64_t starttime = get_sys_clock();
     itemid_t * item;
     index->index_read(key, item, part_id, get_thd_id());
-    INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
+    //INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
     return item;
 }
 
@@ -415,7 +460,7 @@ void
 txn_man::index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item) {
     uint64_t starttime = get_sys_clock();
     index->index_read(key, item, part_id, get_thd_id());
-    INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
+    //INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
 }
 
 RC txn_man::finish(RC rc) {
@@ -439,12 +484,12 @@ RC txn_man::finish(RC rc) {
 #elif CC_ALG == TICTOC
     if (rc == RCOK)
 		rc = validate_tictoc();
-	else 
+	else
 		cleanup(rc);
 #elif CC_ALG == SILO
   if (rc == RCOK)
 		rc = validate_silo();
-	else 
+	else
 		cleanup(rc);
 #elif CC_ALG == IC3
   if (rc == RCOK) {
@@ -471,11 +516,16 @@ RC txn_man::finish(RC rc) {
             rc = Abort;
 	}
 	cleanup(rc);
+#elif CC_ALG == QCC
+    if (rc == RCOK) {
+        qcc_commit();
+    }
+    cleanup(rc); // qcc has no aborts, so cleanup after its commit
 #elif CC_ALG == BAMBOO
   if (rc == Abort)
       status = ABORTED;
   else {
-    uint64_t starttime = get_sys_clock();
+    uint64_t starttime = get_server_clock();
     //int times = 0;
     // aggregate barrier
     // addr_barriers = &(commit_barriers);
@@ -490,7 +540,7 @@ RC txn_man::finish(RC rc) {
         if (g_last_retire > 0 && (retire_threshold < row_cnt - 1)) {
             //times++;
             //if (times >= 10) {
-                uint64_t lapse = get_sys_clock();
+                uint64_t lapse = get_server_clock();
                 if ((lapse - starttime) >= (lapse - start_ts) * g_last_retire) {
             //printf("late retire\n");
                     for (int rid = row_cnt - 1; rid > retire_threshold; rid--) {
@@ -506,7 +556,7 @@ RC txn_man::finish(RC rc) {
            // }
         }
     }
-#if PF_BASIC 
+#if PF_BASIC
     INC_STATS(get_thd_id(), time_commit, get_sys_clock() - starttime);
 #endif
   }
@@ -515,8 +565,8 @@ RC txn_man::finish(RC rc) {
   cleanup(rc);
 #endif
     uint64_t timespan = get_sys_clock() - starttime;
-    INC_TMP_STATS(get_thd_id(), time_man,  timespan);
-    INC_STATS(get_thd_id(), time_cleanup,  timespan);
+    //INC_TMP_STATS(get_thd_id(), time_man,  timespan);
+    //INC_STATS(get_thd_id(), time_cleanup,  timespan);
 #if TPCC_USER_ABORT
     if (rc == Abort && (ret_rc == ERROR)) {
   //printf("txn-%lu user init abort! \n", txn_id);
@@ -533,10 +583,18 @@ txn_man::release() {
     #if CC_ALG == BAMOO || CC_ALG == NO_WAIT || CC_ALG == WOUND_WAIT || CC_ALG == WAIT_DIE || CC_ALG == DL_DETEC
         delete accesses[i]->lock_entry;
     #endif
+#if CC_ALG != QCC
         mem_allocator.free(accesses[i], 0);
+#else
+        // free the buf then the access
+        accesses[i]->buf->free_row();
+        free(accesses[i]);
+#endif
     }
     mem_allocator.free(accesses, 0);
+#if LATCH == LH_MCSLOCK
     delete mcs_node;
+#endif
 }
 
 #if COMMUTATIVE_OPS
@@ -554,5 +612,71 @@ void txn_man::dec_value(int col, uint64_t val) {
   access->com_op = COM_DEC;
   access->com_val = val;
   access->com_col = col;
+}
+#endif
+
+#if CC_ALG == ORDERED_LOCK
+static int ol_compare_rows(const void *or1, const void *or2)
+{
+    typedef struct {itemid_t *row_item; access_t type;} cmp_type;
+
+    const cmp_type *const r1 = (const cmp_type *const)or1;
+    const cmp_type *const r2 = (const cmp_type *const)or2;
+    const uint64_t rank1 = ((row_t *)(r1->row_item->location))->manager->rank;
+    const uint64_t rank2 = ((row_t *)(r2->row_item->location))->manager->rank;
+    if (rank1 == rank2) {
+        printf("fatal: two rows cannot have the same rank\n");
+        fflush(stdout);
+        exit(1);
+    }
+    if (rank1 < rank2) {
+        return -1;
+    }
+    return 1;
+}
+
+void txn_man::ol_sort_rows() {
+    qsort((void *)rows, nr_rows, sizeof(rows[0]), ol_compare_rows);
+}
+#endif
+
+#if CC_ALG == BASIC_SCHED
+static int bs_compare_requests(const void *or1, const void *or2) {
+    typedef struct {u64 id; access_t type;} cmp_type;
+    const cmp_type *const r1 = (const cmp_type *const)or1;
+    const cmp_type *const r2 = (const cmp_type *const)or2;
+    const u64 id1 = r1->id;
+    const u64 id2 = r2->id;
+    if (id1 < id2) {
+        return -1;
+    } else if (id1 > id2) {
+        return 1;
+    }
+    return 0;
+}
+
+void txn_man::bs_regulate_request() {
+    // sort first
+    const u64 nr_requests = request.nr_requests;
+    for (u64 i=0; i<nr_requests; i++) {
+        request.requests[i].id = request.requests[i].id % BASIC_SCHED_SIZE;
+    }
+    qsort((void *)&request.requests, nr_requests, sizeof(request.requests[0]), bs_compare_requests);
+
+    // dedup then
+    u32 idx = 0; // slower
+    u32 sidx = 1; // faster
+    while (sidx < nr_requests) {
+        if (request.requests[idx].id == request.requests[sidx].id) {
+            if (request.requests[idx].type != request.requests[sidx].type) {
+                request.requests[idx].type = WR;
+            }
+        } else {
+            idx++;
+            request.requests[idx] = request.requests[sidx]; // move sidx to the next slot
+        }
+        sidx++;
+    }
+    request.nr_requests = idx + 1;
 }
 #endif

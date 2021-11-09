@@ -24,7 +24,7 @@ private:
 	void init_table_parallel();
 	void * init_table_slice();
 	static void * threadInitTable(void * This) {
-		((ycsb_wl *)This)->init_table_slice(); 
+		((ycsb_wl *)This)->init_table_slice();
 		return NULL;
 	}
 	pthread_mutex_t insert_lock;
@@ -35,13 +35,28 @@ private:
 class ycsb_txn_man : public txn_man
 {
 public:
-	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id); 
+	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id);
 	RC run_txn(base_query * query);
+	RC run_txn_r(base_query * query);
 private:
 #if CC_ALG != BAMBOO
 	uint64_t row_cnt;
 #endif
 	ycsb_wl * _wl;
+
+#if CC_ALG == ORDERED_LOCK
+    void ol_prepare_ycsb(const ycsb_query *const query);
+    void ol_finish_ycsb();
+#endif
+
+#if CC_ALG == BASIC_SCHED
+    void bs_prepare_ycsb(const ycsb_query *const query);
+    void bs_finish_ycsb();
+#endif
+
+#if CC_ALG == QCC
+    struct qcc_txn *qcc_prepare_ycsb(const ycsb_query *const query);
+#endif
 };
 
 #endif

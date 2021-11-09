@@ -38,7 +38,7 @@ void ycsb_query::init(uint64_t thd_id, workload * h_wl, Query_thd * query_thd) {
 	gen_requests(thd_id, h_wl);
 }
 
-void 
+void
 ycsb_query::calculateDenom()
 {
 	assert(the_n == 0);
@@ -49,12 +49,12 @@ ycsb_query::calculateDenom()
 
 // The following algorithm comes from the paper:
 // Quickly generating billion-record synthetic databases
-// However, it seems there is a small bug. 
-// The original paper says zeta(theta, 2.0). But I guess it should be 
+// However, it seems there is a small bug.
+// The original paper says zeta(theta, 2.0). But I guess it should be
 // zeta(2.0, theta).
 double ycsb_query::zeta(uint64_t n, double theta) {
 	double sum = 0;
-	for (uint64_t i = 1; i <= n; i++) 
+	for (uint64_t i = 1; i <= n; i++)
 		sum += pow(1.0 / i, theta);
 	return sum;
 }
@@ -66,9 +66,9 @@ uint64_t ycsb_query::zipf(uint64_t n, double theta) {
 	assert(theta == g_zipf_theta);
 	double alpha = 1 / (1 - theta);
 	double zetan = denom;
-	double eta = (1 - pow(2.0 / n, 1 - theta)) / 
+	double eta = (1 - pow(2.0 / n, 1 - theta)) /
 		(1 - zeta_2_theta / zetan);
-	double u; 
+	double u;
 	drand48_r(&_query_thd->buffer, &u);
 	double uz = u * zetan;
 	if (uz < 1) return 1;
@@ -106,7 +106,7 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl) {
 				part_to_access[part_num] = rint64 % g_virtual_part_cnt;
 			}
 			UInt32 j;
-			for (j = 0; j < part_num; j++) 
+			for (j = 0; j < part_num; j++)
 				if ( part_to_access[part_num] == part_to_access[j] )
 					break;
 			if (j == part_num)
@@ -125,18 +125,18 @@ uint64_t table_size = g_synth_table_size / g_virtual_part_cnt;
 #endif
 	uint64_t rid = 0;
 	uint64_t tmp;
-	for (tmp = 0; tmp < local_req_per_query; tmp ++) {		
+	for (tmp = 0; tmp < local_req_per_query; tmp ++) {
 	assert(tmp == rid);
 		ycsb_request * req = &requests[rid];
 		// the request will access part_id.
 		//uint64_t ith = tmp * part_num / g_req_per_query;
 		uint64_t ith = tmp * part_num / local_req_per_query;
 		uint64_t part_id = part_to_access[ ith ];
-		uint64_t row_id; 
+		uint64_t row_id;
 #if SYNTHETIC_YCSB
 		assert(part_id == 0);
 #if NUM_HS == 1
-#if POS_HS == TOP 
+#if POS_HS == TOP
 		if (tmp == 0) {
 			// insert hotpost at the beginning
 			req->rtype = FIRST_HS;
@@ -148,7 +148,7 @@ uint64_t table_size = g_synth_table_size / g_virtual_part_cnt;
 			req->rtype = FIRST_HS;
 			row_id = table_size - 1;
 		} else {
-#elif POS_HS == BOT 
+#elif POS_HS == BOT
 		if (tmp == (g_req_per_query - 1)) {
 			// insert hotpost at the beginning
 			req->rtype = FIRST_HS;
@@ -189,7 +189,7 @@ uint64_t table_size = g_synth_table_size / g_virtual_part_cnt;
 		} else if (tmp == (g_req_per_query - 1)) {
 			req->rtype = SECOND_HS;
 			row_id = hs2_row_id;
-		} else { 
+		} else {
 #elif POS_HS == SPECIFIED
 		#if FIXED_HS == 0
 		UInt32 hs2_idx = (UInt32) min((int)g_req_per_query-1, max(1, (int) floor(g_req_per_query * g_specified_ratio)));
@@ -311,7 +311,7 @@ uint64_t table_size = g_synth_table_size / g_virtual_part_cnt;
 						a = j - 1;
 					else
 						continue;
-				} 
+				}
 				if (requests[j+1].key > upper) {
 					if (j + 1 != i)
 						b = j + 1;

@@ -1,7 +1,7 @@
 #ifndef ROW_BAMBOO_H
 #define ROW_BAMBOO_H
 
-// update cohead info when a newly-init entry (en) is firstly 
+// update cohead info when a newly-init entry (en) is firstly
 // added to owners (bring_next, WR)
 // or tail of retired (lock_get/bring_next, RD)
 // (not apply when moving from owners to retired
@@ -9,9 +9,9 @@
 //     if previous entry is not null
 //         if self is WR,
 //             not cohead, need to incr barrier
-//         else 
+//         else
 //             if previous entry is RD
-//               if prev is cohead, 
+//               if prev is cohead,
 //                   //time saved is 0.
 //               otherwise, self is not cohead, need to incr barrier,
 //                   //record start_ts to calc time saved when becomes cohead
@@ -21,7 +21,7 @@
 //     else
 //         read no dirty data, becomes cohead
 //         //record time saved from elr is 0.
-//     		
+//
 #define UPDATE_RETIRE_INFO(en, prev) { \
   if (prev) { \
     if (en->type == LOCK_EX) \
@@ -49,9 +49,9 @@
 
 // Insert to_insert(RD) into the tail when owners is not empty
 // (1) update inserted entry's cohead information
-// (2) NEED to update owners cohead information 
+// (2) NEED to update owners cohead information
 //     if owner is not cohead, it cannot become one with RD inserted
-//     if owner is cohead, RD becomes cohead and owner is no longer a cohead 
+//     if owner is cohead, RD becomes cohead and owner is no longer a cohead
 #define INSERT_TO_RETIRED_TAIL(to_insert) { \
   UPDATE_RETIRE_INFO(to_insert, retired_tail); \
   if (owners && owners->is_cohead) { \
@@ -166,7 +166,7 @@ class Row_bamboo {
     #if CC_ALG == BAMBOO
         BBLockEntry * entry = access->lock_entry;
         entry->txn->lock_ready = false;
-        // dont init lock_abort, can only be set true but not false. 
+        // dont init lock_abort, can only be set true but not false.
         entry->next = NULL;
         entry->prev = NULL;
         entry->status = LOCK_DROPPED;
@@ -203,7 +203,7 @@ class Row_bamboo {
 		}
 		if (en) {
 			LIST_INSERT_BEFORE(en, to_insert);
-			if (en == waiters_head) 
+			if (en == waiters_head)
 				waiters_head = to_insert;
 		} else {
 			LIST_PUT_TAIL(waiters_head, waiters_tail, to_insert);
@@ -212,7 +212,7 @@ class Row_bamboo {
 		to_insert->txn->lock_ready = false;
 		waiter_cnt++;
         assert(ts != 0);
-	};	
+	};
 
 	// NOTE: it is unrealistic to have completely ordered read with
 	// dynamically assigned ts. e.g. [0,0,0] -> [12, 11, 5]
@@ -228,7 +228,7 @@ class Row_bamboo {
                     continue;
 				}
 				en = rm_from_retired(en, true, to_insert->txn);
-			} else 
+			} else
 				en = en->next;
 		}
 		return RCOK;
@@ -246,7 +246,7 @@ class Row_bamboo {
                     continue;
 				}
 				en = rm_from_retired(en, true, to_insert->txn);
-			} else 
+			} else
 				en = en->next;
 		}
 		return RCOK;
