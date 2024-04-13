@@ -1,50 +1,28 @@
-DBx1000-Bamboo
-==============
-The repository is built on DBx1000: https://github.com/yxymit/DBx1000
+# DecentSched-Bamboo
 
-    Staring into the Abyss: An Evaluation of Concurrency Control with One Thousand Cores
-    Xiangyao Yu, George Bezerra, Andrew Pavlo, Srinivas Devadas, Michael Stonebraker
-    http://www.vldb.org/pvldb/vol8/p209-yu.pdf
+The repository is forked from Bamboo (DBx1000). The main purpose of this repository is to provide
+the integration of DecentSched in a real benchmark system.
 
-The major changes made in this repository:
-- added support for Bamboo and its optimizations. Bamboo is a concurrency control protocol proposed in:
-```
-    Releasing Locks As Early As You Can: Reducing Contention of Hotspots by Violating Two-Phase Locking
-    Zhihan Guo, Kan Wu, Cong Yan, Xiangyao Yu
-    link (TBA)
-```
-- focused on support for: NO_WAIT, WOUND_WAIT, WAIT_DIE, SILO, IC3
-- changed the memory allocation for lock entry to be static
-- added support for MCS Lock in addition to mutex and spinlock
-- modified test scripts for easier evaluation
+Please note that the main implementation of DecentSched is in the [main repository]
+(https://github.com/decentralized-scheduling/DecentSched).
 
+## Implementation
 
-Build & Test
-------------
+We implemented DecentSched as a concurrency control flavor in Bamboo's codebase (codename: `QCC`),
+along with centralized scheduling (`BASIC_SCHED`) and ordered locking (`ORD_LOCK`). They
+can be used as a regular concurrency control protocol, just like the existing ones in the codebase.
 
-To test the database
+## Experiments
 
-    python test.py experiments/default.json
+The experiment scripts used for the research paper is included in `experiments` directory.
+The `run.sh` is a one-click script that will run all the experiments in one shot.
+Experiment setup was set based on the specification of CloudLab's c6420 machine (single node).
 
+Before experiments are run, please make sure all submodules are checked out.
 
-Configure & Run
----------------
+For YCSB experiments, Fig. 5(a)-(d) correspond to `ycsb-1.py` to `ycsb-4.py` accordingly.
+For TPC-C-NP experiments, Fig. 6(a) and 6(b) correspond to `tpcc-1.py` and `tpcc-2.py`. Fig. 6(c)
+is produced by `tpcc-6.py` and Fig. 6(d) is produced by `tpcc-5.py`.
 
-Supported configuration parameters can be found in config-std.h file. Extra configuration parameters include:
-```
-    UNSET_NUMA        : default is false. If set false, it will disable numa effect by interleavingly allocate data.
-    NDEBUG            : default is true. If set true, it will disable all assert()
-    COMPILE_ONLY      : defalut is false. If set false, it will compile first and then automatically execute.
-```
-Options to change/pass configuration:
-- Option 1: use basic configurations provided in experiments/default.json. overwrite existing configurations or pass extra configurations through arguments.
-    e.g. ```python test.py experiments/default.json WORKLOAD=TPCC NUM_WH=1```
-- Option 2: directly copy config-std.h to config.h and modify config.h. Then compile using ```make -j``` and execute through ```./rundb ```
-
-
-
-
-
-
-
-
+Once all the results are collected, they can be copied to the `plot` directory and the `draw.sh`
+script will generate all the plots.
